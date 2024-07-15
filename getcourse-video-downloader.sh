@@ -69,12 +69,31 @@ else
 	curl -L --output "$second_playlist" "$tail"
 fi
 
+# Подсчет общего количества файлов в плей-листе
+echo "Подсчет количества файлов для скачивания..."
+num=0
+while read -r line
+do
+	if ! [[ "$line" =~ ^http ]]; then continue; fi
+	num=$((++num))
+done < "$second_playlist"
+echo "Всего файлов: $num"
+# Засекается стартовое время
+start_time=$SECONDS
+
 c=0
 while read -r line
 do
 	if ! [[ "$line" =~ ^http ]]; then continue; fi
 	curl -L --output "${tmpdir}/$(printf '%05d' "$c").ts" "$line"
 	c=$((++c))
+	# Информация о текущем прогрессе загрузки
+	perc=$((c*100/num))
+	echo "Файлов скачано: $c из $num ($perc %)"
+	elapsed=$(( SECONDS - start_time ))
+	printf "Прошло: %dч:%dм:%dс\n" $((elapsed/3600)) $((elapsed%3600/60)) $((elapsed%60))
+	forecast=$((((elapsed*1000/c)*(num-c))/1000))
+	printf "Осталось примерно: %dч:%dм:%dс\n\n" $((forecast/3600)) $((forecast%3600/60)) $((forecast%60))
 done < "$second_playlist"
 
 cat "$tmpdir"/*.ts > "$result_file"
